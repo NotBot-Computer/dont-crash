@@ -9,7 +9,8 @@ extends Node
 ## 0.3, as TeamProbe), until somebody wins. Two parts:
 ##
 ##   sums   — the arithmetic on its own: which variants a cup cycles through
-##            at each count (co-pilot only with four), 3/2/1/0 by place, a
+##            at each count (co-pilot only with four), 3/2/1/0 by place, tied
+##            places sharing an award and skipping the next (1st, 1st, 3rd), a
 ##            result missing somebody still paying every place, the champion
 ##            rule when two cross the target in one round, and whose car each
 ##            trophy is — the round winner's, a winning team's alternating.
@@ -19,7 +20,9 @@ extends Node
 ##            the order is the one this probe *watched* happen — the winner
 ##            first, then (one tower) whoever ran out of lives last, or (a
 ##            race) whoever was still building, tallest first, then the
-##            drop-outs, last out highest. Every trophy a round hands out, to
+##            drop-outs, last out highest; or (co-op, a round of the solo cup)
+##            fewest bricks dropped first, counted here turn by turn, with an
+##            equal count an equal place. Every trophy a round hands out, to
 ##            every row, is a car of that round's winner. The tally screen is instantiated
 ##            after every round and must split the totals back into before
 ##            and this round's award, and name the same champion.
@@ -39,6 +42,9 @@ const MATCH_TIMEOUT := 900.0
 
 var _rng := RandomNumberGenerator.new()
 var _failures: Array[String] = []
+# Per competitor, the places a co-op round was watched to earn; empty for
+# every other round, whose places are just its order.
+var watched_places: Array[int] = []
 
 func _ready() -> void:
 	print("=== sums ===")
@@ -79,8 +85,8 @@ func _setup(cup: int, count: int) -> void:
 
 func _sums() -> void:
 	var want_rounds := {
-		"solo 2": [GameSettings.TOWER_FFA, GameSettings.TOWER_RACE_SOLO],
-		"solo 4": [GameSettings.TOWER_FFA, GameSettings.TOWER_RACE_SOLO],
+		"solo 2": [GameSettings.TOWER_FFA, GameSettings.TOWER_RACE_SOLO, GameSettings.TOWER_COOP],
+		"solo 4": [GameSettings.TOWER_FFA, GameSettings.TOWER_RACE_SOLO, GameSettings.TOWER_COOP],
 		"team 3": [GameSettings.TOWER_TEAMS, GameSettings.TOWER_RACE],
 		"team 4": [GameSettings.TOWER_TEAMS, GameSettings.TOWER_RACE, GameSettings.TOWER_COPILOT],
 	}
@@ -116,6 +122,25 @@ func _sums() -> void:
 	GameSettings.cup_scores = [11, 14, 0, 0]
 	GameSettings.cup_record([0, 2, 3, 1])
 	_expect_champion("14 + 0 and 11 + 3, both 14", -1)
+
+	# A co-op round with ties: P2 and P4 dropped nothing, P1 one, P3 two.
+	_setup(GameSettings.TOWER_CUP_SOLO, 4)
+	GameSettings.cup_record([1, 3, 0, 2], [0, 0, 2, 3])
+	_expect("tied 1st: 3, 3, 1, 0", GameSettings.cup_scores, [1, 3, 0, 3])
+	_expect("tied places", GameSettings.cup_last_places, [2, 0, 3, 0])
+	_expect_cars("tied winners' cars alternate", [[1], [1, 3, 1], [], [1, 3, 1]])
+	_expect("tied winners", GameSettings.cup_round_winners(), [1, 3])
+	GameSettings.cup_record([0, 1, 2, 3], [0, 1, 1, 1])
+	_expect("tied 2nd: 3, 2, 2, 2", GameSettings.cup_scores, [4, 5, 2, 5])
+	# A careless `places` cannot put anyone above the entry before it.
+	GameSettings.cup_record([0, 1, 2, 3], [0, 0, 0, 0])
+	_expect("everyone level", GameSettings.cup_last_places, [0, 0, 0, 0])
+	GameSettings.cup_record([0, 1, 2, 3], [3, 0, 1, 0])
+	_expect("nonsense places normalised", GameSettings.cup_last_places, [0, 0, 2, 2])
+	# Level on total and on place: the earlier in the round's order takes it.
+	GameSettings.cup_scores = [12, 12, 0, 0]
+	GameSettings.cup_record([1, 0, 2, 3], [0, 0, 2, 3])
+	_expect_champion("15 against 15, both 1st, P2 listed first", 1)
 
 	_setup(GameSettings.TOWER_CUP_TEAM, 3)
 	_expect("team cup 3p members of the left", GameSettings.cup_members(0), [0, 2])
@@ -170,6 +195,7 @@ func _cup(cup: int, count: int, seed_base: int) -> void:
 		for cars in GameSettings.cup_trophy_cars:
 			cars_before.append(cars.size())
 		var watched: Array[int]
+		watched_places = []
 		if GameSettings.tower_is_race(variant):
 			watched = await _play_race()
 		else:
@@ -190,13 +216,18 @@ func _cup(cup: int, count: int, seed_base: int) -> void:
 			_fail("%s: placed %s, not every competitor once" % [where, order])
 		if not watched.is_empty() and order != watched:
 			_fail("%s: placed %s, but the round was played %s" % [where, order, watched])
-		for place in range(order.size()):
-			var c: int = order[place]
+		if not watched_places.is_empty() and GameSettings.cup_last_places != watched_places:
+			_fail("%s: places %s, but the round was played %s" % [where, GameSettings.cup_last_places, watched_places])
+		var winners: Array[int] = []
+		for w in GameSettings.cup_round_winners():
+			winners.append_array(GameSettings.cup_members(w))
+		for i in range(order.size()):
+			var c: int = order[i]
+			var place: int = GameSettings.cup_last_places[c]
 			if GameSettings.cup_scores[c] - before[c] != GameSettings.cup_award(place):
 				_fail("%s: %s came %d and got %d" % [where, GameSettings.cup_name(c), place + 1, GameSettings.cup_scores[c] - before[c]])
 			# Every new trophy on this row is a car of the round's winner.
 			var cars: Array = GameSettings.cup_trophy_cars[c]
-			var winners: Array[int] = GameSettings.cup_members(order[0])
 			if cars.size() != GameSettings.cup_scores[c]:
 				_fail("%s: %s has %d trophies and %d trophy cars" % [where, GameSettings.cup_name(c), GameSettings.cup_scores[c], cars.size()])
 			for k in range(cars_before[c], cars.size()):
@@ -244,10 +275,16 @@ func _play_tower() -> Array[int]:
 	var was_alive := {}
 	var aimed = null
 	var t := 0.0
+	# Co-op: bricks lost, per player, counted the frame each turn stops settling.
+	var dropped := {}
+	var was_settling := false
 	while mode.state != "gameover" and t < MATCH_TIMEOUT:
 		if mode.state == "piloting" and mode.active_piece != null and aimed != mode.active_piece:
 			aimed = mode.active_piece
 			_aim(mode, SPREAD)
+		if was_settling and mode.state != "settling":
+			dropped[mode.active_slot] = dropped.get(mode.active_slot, 0) + int(mode.fallen_this_turn)
+		was_settling = mode.state == "settling"
 		for team in mode._teams_here():
 			var alive: bool = int(mode.lives[team]) > 0
 			if was_alive.get(team, true) and not alive:
@@ -258,6 +295,27 @@ func _play_tower() -> Array[int]:
 	var watched: Array[int] = []
 	if mode.state != "gameover":
 		_fail("a %s round had no result after %.0fs" % [GameSettings.tower_variant_info(mode.variant)["title"], t])
+	elif mode.variant == GameSettings.TOWER_COOP:
+		if was_settling:
+			dropped[mode.active_slot] = dropped.get(mode.active_slot, 0) + int(mode.fallen_this_turn)
+		var crew: Array[int] = []
+		for s in range(GameSettings.player_count):
+			crew.append(s)
+		crew.sort_custom(func(a: int, b: int) -> bool:
+			return dropped.get(a, 0) < dropped.get(b, 0) or (dropped.get(a, 0) == dropped.get(b, 0) and a < b))
+		watched = crew
+		watched_places = []
+		for _s in crew:
+			watched_places.append(0)
+		for i in range(crew.size()):
+			var same: bool = i > 0 and dropped.get(crew[i], 0) == dropped.get(crew[i - 1], 0)
+			watched_places[crew[i]] = watched_places[crew[i - 1]] if same else i
+		var tally: Array = []
+		for s in range(GameSettings.player_count):
+			tally.append(dropped.get(s, 0))
+		print("    co-op round: dropped %s -> places %s" % [tally, watched_places])
+		if mode._cup_leave_in <= 0.0:
+			_fail("a finished co-op cup round is not on its way to the tally")
 	else:
 		for team in mode._teams_here():
 			if int(mode.lives[team]) > 0:

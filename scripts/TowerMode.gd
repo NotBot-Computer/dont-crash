@@ -890,7 +890,8 @@ func _end_match() -> void:
 		overlay_title.text = _result_title(winner)
 		overlay_body.text = _result_body()
 	if GameSettings.tower_cup != GameSettings.TOWER_CUP_NONE:
-		GameSettings.cup_record(placements())
+		var order: Array[int] = placements()
+		GameSettings.cup_record(order, placement_places(order))
 		overlay_hint.text = "ENTER for the trophies      ESC for the menu"
 		_cup_leave_in = CUP_RESULT_HOLD
 	overlay.visible = true
@@ -902,7 +903,17 @@ func _end_match() -> void:
 # eliminated in reverse: the last one out came 2nd. Within a match only one
 # team can lose a life per turn, so nobody is ever eliminated level with
 # anybody else and the order is never a coin toss.
+#
+# Co-op has one team and nobody to beat, so it is placed by player instead —
+# which is the solo cup's competitor anyway — and by who dropped the fewest
+# bricks; the crew won or lost together, so that is the only thing in it that
+# was anybody's own. Equal counts are equal places (placement_places()).
 func placements() -> Array[int]:
+	if variant == GameSettings.TOWER_COOP:
+		var crew: Array[int] = members.duplicate()
+		crew.sort_custom(func(a: int, b: int) -> bool:
+			return bricks_dropped[a] < bricks_dropped[b] or (bricks_dropped[a] == bricks_dropped[b] and a < b))
+		return crew
 	var order: Array[int] = []
 	for t in _teams_here():
 		if lives[t] > 0:
@@ -919,6 +930,18 @@ func placements() -> Array[int]:
 		if not order.has(t):
 			order.append(t)
 	return order
+
+# Each entry of placements()' 0-based place: its index, except in co-op,
+# where the same number of bricks dropped is the same place — 1st, 1st, 3rd.
+func placement_places(order: Array[int]) -> Array[int]:
+	var out: Array[int] = []
+	for i in range(order.size()):
+		if variant == GameSettings.TOWER_COOP and i > 0 \
+				and bricks_dropped[order[i]] == bricks_dropped[order[i - 1]]:
+			out.append(out[i - 1])
+		else:
+			out.append(i)
+	return out
 
 func _leave_for_cup() -> void:
 	_cup_leave_in = 0.0
@@ -1023,6 +1046,8 @@ func _result_body() -> String:
 	if worst >= 0:
 		lines += "\nWrecking ball: %s, %d %s dropped" % [
 			slot_name(worst), bricks_dropped[worst], "brick" if bricks_dropped[worst] == 1 else "bricks"]
+	if variant == GameSettings.TOWER_COOP and GameSettings.tower_cup != GameSettings.TOWER_CUP_NONE:
+		lines += "\nFor the cup: fewest bricks dropped places first"
 	return lines.strip_edges()
 
 # --- Per-frame -------------------------------------------------------------

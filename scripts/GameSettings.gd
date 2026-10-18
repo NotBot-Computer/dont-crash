@@ -31,37 +31,25 @@ var tower_variant: int = TOWER_FFA
 func tower_is_race(variant: int = tower_variant) -> bool:
 	return variant == TOWER_RACE or variant == TOWER_RACE_SOLO
 
-# The variant picker's rows, and the player counts each one is playable at.
-# `counts` is what PlayerSelect offers; a count missing here is not a quieter
-# version of the variant, it is a variant that does not exist at that count
-# (co-pilot needs two crews of two, and a team needs a second player).
+# Every variant, and the player counts each one is playable at. `counts` is
+# what a cup checks before playing a variant as one of its rounds: a count
+# missing here is not a quieter version of the variant, it is a variant that
+# does not exist at that count (co-pilot needs two crews of two, and a team
+# needs a second player).
 #
-# `group` puts a variant behind a category row on the picker instead of on
-# its top level ("" = top level). The three where one team plays against
-# another sit under TEAM MODES, asked for so the first screen reads as three
-# choices — alone, against each other in teams, together — rather than five.
-# Co-op is deliberately not in it: it is one team, and nobody plays against
-# anybody. The plain RACE is the free-for-all version of TEAM RACE — every
-# player on a tower of their own — and sits on the top level beside the
-# free-for-all it is the race of.
+# Nobody picks one of these directly any more. The picker offers only the two
+# cups (TOWER_CUPS below), and every variant is played as a cup's round —
+# asked for so that whether you play alone or in teams it is always a cup,
+# with a different mode every round. Variants are still played on their own
+# by the probes, with tower_cup left at TOWER_CUP_NONE.
 const TOWER_VARIANTS: Array[Dictionary] = [
-	{"id": TOWER_FFA, "group": "", "title": "FREE FOR ALL", "hint": "one tower, three lives each — drop a brick and it costs you", "counts": [2, 3, 4]},
-	{"id": TOWER_RACE_SOLO, "group": "", "title": "RACE", "hint": "a tower each, everyone at once — first to the line wins, and hexes hit the leader", "counts": [2, 3, 4]},
-	{"id": TOWER_TEAMS, "group": "teams", "title": "TEAMS", "hint": "one tower — a shared pool of lives per team, turns alternate sides", "counts": [3, 4]},
-	{"id": TOWER_COPILOT, "group": "teams", "title": "CO-PILOT", "hint": "two crews of two, one brick per crew — one of you steers it, the other turns it", "counts": [4]},
-	{"id": TOWER_COOP, "group": "", "title": "CO-OP: THE STORM", "hint": "everyone on one team — build to the goal line while the storm throws hexes", "counts": [1, 2, 3, 4]},
-	{"id": TOWER_RACE, "group": "teams", "title": "TEAM RACE", "hint": "a tower each, side by side — first to the line wins, and hexes cross over", "counts": [2, 3, 4]},
+	{"id": TOWER_FFA, "title": "FREE FOR ALL", "hint": "one tower, three lives each — drop a brick and it costs you", "counts": [2, 3, 4]},
+	{"id": TOWER_RACE_SOLO, "title": "RACE", "hint": "a tower each, everyone at once — first to the line wins, and hexes hit the leader", "counts": [2, 3, 4]},
+	{"id": TOWER_TEAMS, "title": "TEAMS", "hint": "one tower — a shared pool of lives per team, turns alternate sides", "counts": [3, 4]},
+	{"id": TOWER_COPILOT, "title": "CO-PILOT", "hint": "two crews of two, one brick per crew — one of you steers it, the other turns it", "counts": [4]},
+	{"id": TOWER_COOP, "title": "CO-OP: THE STORM", "hint": "build to the goal line together while the storm throws hexes — fewest bricks dropped wins the round", "counts": [1, 2, 3, 4]},
+	{"id": TOWER_RACE, "title": "TEAM RACE", "hint": "a tower each, side by side — first to the line wins, and hexes cross over", "counts": [2, 3, 4]},
 ]
-
-# The category rows a `group` refers to: what the top level shows for it, and
-# the title over its own page.
-const TOWER_GROUPS := {
-	"teams": {
-		"title": "TEAM MODES",
-		"hint": "left half of the keyboard vs the right — teams, co-pilot or a race",
-		"page_hint": "left team: P1 + P3      right team: P2 + P4",
-	},
-}
 
 func tower_variant_info(variant: int = tower_variant) -> Dictionary:
 	for v: Dictionary in TOWER_VARIANTS:
@@ -78,8 +66,8 @@ func tower_scene(variant: int = tower_variant) -> String:
 
 # --- Pile Up's cups ----------------------------------------------------------
 # A cup is a run of rounds, each one a *different* variant in turn — the
-# solo cup alternates free-for-all (last builder standing) and the race, the
-# team cup goes teams, team race, co-pilot — scored by where you finished:
+# solo cup goes free-for-all (last builder standing), the race, co-op, the
+# team cup teams, team race, co-pilot — scored by where you finished:
 # 3 trophies for 1st, 2 for 2nd, 1 for 3rd, none for 4th. First to
 # CUP_TARGET wins the cup. TowerCup is the tally screen between rounds.
 #
@@ -117,18 +105,30 @@ const CUP_AWARDS: Array[int] = [3, 2, 1, 0]
 # user asked for this instead.
 const CUP_TEAM_AWARDS: Array[int] = [3, 0]
 
-# The picker rows for the cups, in TOWER_VARIANTS' format plus `rounds`: the
-# variants the cup cycles through, in order. A round whose variant cannot be
-# played at this player count is skipped (co-pilot needs four), never played
-# short-handed.
+# The picker's rows — the only two — in TOWER_VARIANTS' format plus `rounds`:
+# the variants the cup cycles through, in order. A round whose variant cannot
+# be played at this player count is skipped (co-pilot needs four), never
+# played short-handed.
+#
+# Every variant is in one of them. Co-op is a round of the solo cup even
+# though nobody plays against anybody in it: the crew builds together, and the
+# round is placed by who dropped the fewest bricks (TowerMode.placements()),
+# with an equal count an equal place. It is not in the team cup, because a
+# side of one against a side of two would be counting different numbers of
+# turns.
 const TOWER_CUPS: Array[Dictionary] = [
-	{"id": TOWER_CUP_SOLO, "group": "", "title": "CUP", "hint": "a new mode every round — 3 trophies for 1st, 2 for 2nd, 1 for 3rd, first to 15", "counts": [2, 3, 4], "rounds": [TOWER_FFA, TOWER_RACE_SOLO]},
-	{"id": TOWER_CUP_TEAM, "group": "teams", "title": "TEAM CUP", "hint": "teams, team race and co-pilot in turn — 3 trophies a round won, first team to 15", "counts": [3, 4], "rounds": [TOWER_TEAMS, TOWER_RACE, TOWER_COPILOT]},
+	{"id": TOWER_CUP_SOLO, "title": "SOLO CUP", "hint": "everyone for themselves — free for all, a race, then co-op, round and round", "counts": [2, 3, 4], "rounds": [TOWER_FFA, TOWER_RACE_SOLO, TOWER_COOP]},
+	{"id": TOWER_CUP_TEAM, "title": "TEAM CUP", "hint": "left half of the keyboard vs the right — teams, team race and co-pilot in turn", "counts": [3, 4], "rounds": [TOWER_TEAMS, TOWER_RACE, TOWER_COPILOT]},
 ]
 
 var cup_scores: Array[int] = [] # per competitor
 var cup_round: int = 0 # rounds finished so far
 var cup_last_order: Array[int] = [] # the last round's competitors, best to worst
+# Per competitor, its 0-based place in the last round. Usually its index in
+# cup_last_order, but a round can place two the same (co-op, equal bricks
+# dropped): then both take that place's award and the next place is skipped,
+# the way a sports table does it — 1st, 1st, 3rd.
+var cup_last_places: Array[int] = []
 var cup_last_awards: Array[int] = [] # what each competitor got for it
 # Per competitor, one entry per trophy in the order they were won: the player
 # slot whose car that trophy is drawn as — a member of whoever won its round.
@@ -190,6 +190,7 @@ func cup_reset() -> void:
 		cup_scores.append(0)
 	cup_round = 0
 	cup_last_order = []
+	cup_last_places = []
 	cup_last_awards = []
 	cup_trophy_cars = []
 	for _c in range(cup_competitors()):
@@ -199,34 +200,62 @@ func cup_reset() -> void:
 
 # One round's result, best to worst. Anyone missing from `order` is put last
 # in seat order rather than dropped, so a round always pays out every place.
-func cup_record(order: Array[int]) -> void:
+# `places`, if given, is each entry of `order`'s 0-based place, for a round
+# with ties (co-op); without it every entry is its own place.
+func cup_record(order: Array[int], places: Array[int] = []) -> void:
 	var full: Array[int] = []
-	for c in order:
+	var full_places: Array[int] = []
+	for i in range(order.size()):
+		var c: int = order[i]
 		if c >= 0 and c < cup_scores.size() and not full.has(c):
 			full.append(c)
+			full_places.append(places[i] if i < places.size() else i)
 	for c in range(cup_scores.size()):
 		if not full.has(c):
 			full.append(c)
+			full_places.append(full.size() - 1)
+	# An entry either ties the one before it or takes its own index — 1st,
+	# 1st, 3rd, never 1st, 1st, 2nd — so a short or careless `places` can
+	# neither reorder anybody nor invent a place.
+	full_places[0] = 0
+	for i in range(1, full_places.size()):
+		full_places[i] = full_places[i - 1] if full_places[i] <= full_places[i - 1] else i
 	cup_last_order = full
 	cup_last_awards = []
+	cup_last_places = []
 	for _c in range(cup_scores.size()):
 		cup_last_awards.append(0)
+		cup_last_places.append(0)
 	# Every trophy this round is the winner's car. A winning team's cars take
 	# turns between its members, the same way on every row, so the pair is
-	# on everyone's row rather than only its first member.
-	var winners: Array[int] = cup_members(full[0])
+	# on everyone's row rather than only its first member — and so do the
+	# cars of everyone sharing 1st.
+	var winners: Array[int] = []
+	for i in range(full.size()):
+		if full_places[i] == 0:
+			winners.append_array(cup_members(full[i]))
 	if winners.is_empty():
 		winners = [0]
 	while cup_trophy_cars.size() < cup_scores.size():
 		var cars: Array[int] = []
 		cup_trophy_cars.append(cars)
-	for place in range(full.size()):
-		var got: int = cup_award(place)
-		cup_last_awards[full[place]] = got
-		cup_scores[full[place]] += got
+	for i in range(full.size()):
+		var got: int = cup_award(full_places[i])
+		cup_last_places[full[i]] = full_places[i]
+		cup_last_awards[full[i]] = got
+		cup_scores[full[i]] += got
 		for k in range(got):
-			cup_trophy_cars[full[place]].append(winners[k % winners.size()])
+			cup_trophy_cars[full[i]].append(winners[k % winners.size()])
 	cup_round += 1
+
+# Whoever the last round placed first — more than one after a tie.
+func cup_round_winners() -> Array[int]:
+	var out: Array[int] = []
+	for i in range(cup_last_order.size()):
+		var c: int = cup_last_order[i]
+		if c < cup_last_places.size() and cup_last_places[c] == 0:
+			out.append(c)
+	return out
 
 # The player slot whose car competitor `c`'s trophy number `k` (0-based) is
 # drawn as; -1 if the cup has no record of it (a total set by hand).
@@ -245,9 +274,14 @@ func cup_champion() -> int:
 		if cup_scores[c] < CUP_TARGET:
 			continue
 		if best == -1 or cup_scores[c] > cup_scores[best] \
-				or (cup_scores[c] == cup_scores[best] and cup_last_order.find(c) < cup_last_order.find(best)):
+				or (cup_scores[c] == cup_scores[best] and _cup_place(c) < _cup_place(best)) \
+				or (cup_scores[c] == cup_scores[best] and _cup_place(c) == _cup_place(best) \
+					and cup_last_order.find(c) < cup_last_order.find(best)):
 			best = c
 	return best
+
+func _cup_place(c: int) -> int:
+	return cup_last_places[c] if c < cup_last_places.size() else cup_last_order.find(c)
 
 # Teams are seats, not a choice. P1 (WASD) and P3 (TFGH) sit on the left
 # half of the keyboard and P2 (arrows) and P4 (IJKL) on the right, so the

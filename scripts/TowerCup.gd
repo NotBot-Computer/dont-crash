@@ -94,7 +94,7 @@ func _begin() -> void:
 		var got: int = GameSettings.cup_last_awards[c] if after_round else 0
 		award.append(got)
 		before.append(GameSettings.cup_scores[c] - got)
-		place_of.append(GameSettings.cup_last_order.find(c) if after_round else -1)
+		place_of.append(GameSettings._cup_place(c) if after_round else -1)
 		most = maxi(most, got)
 	champion = GameSettings.cup_champion()
 	_done_at = POP_START + float(maxi(0, most - 1)) * POP_STEP + POP_TIME if most > 0 else 0.0
@@ -178,7 +178,7 @@ func _draw_heading(font: Font) -> void:
 		if GameSettings.tower_cup == GameSettings.TOWER_CUP_TEAM:
 			sub = "first team to %d trophies wins — 3 for winning a round, none for losing it" % GameSettings.CUP_TARGET
 		else:
-			sub = "first to %d trophies wins — 1st place 3, 2nd 2, 3rd 1, 4th none" % GameSettings.CUP_TARGET
+			sub = "first to %d trophies wins — 1st place 3, 2nd 2, 3rd 1, 4th none — and a different mode every round" % GameSettings.CUP_TARGET
 	else:
 		var played: int = GameSettings.cup_variant(GameSettings.cup_round - 1)
 		title = "ROUND %d — %s" % [GameSettings.cup_round, GameSettings.tower_variant_info(played)["title"]]
