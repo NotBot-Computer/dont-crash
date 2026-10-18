@@ -88,7 +88,7 @@ The nine skills, by pack (`scripts/tower_skills/packs/`):
 
 A self skill and a hex are drawn with equal odds into whichever slot is empty; within a category every skill is equally likely.
 
-The bag holds nineteen shapes in two categories: the seven classic tetrominoes, and all twelve pentominoes. They are not equally likely — a classic turns up 10% of the time and a five-cell piece 2.5%, so roughly **seven bricks in ten are the shapes you already know** and the odd ones stay a thing that happens rather than the norm. `TowerMode.CLASSIC_BIAS` is the single number that sets that split.
+The bag holds nineteen shapes in two categories: the seven classic tetrominoes, and all twelve pentominoes. They are not equally likely — a classic turns up about 13% of the time and a five-cell piece under 1%, so roughly **nine bricks in ten are the shapes you already know** and an odd one is a rare surprise. `TowerMode.CLASSIC_BIAS` is the single number that sets that split.
 
 Coming up against the side of a taller part of the tower doesn't end your turn. You keep steering for as long as you like and can always back out of it — a turn ends when something is actually *underneath* the brick, and at no other time.
 

@@ -86,15 +86,19 @@ const CELL := 38.0
 # `classic`, and the twelve pentominoes — and a uniform draw over all nineteen
 # made two bricks in three a five-cell piece. That is backwards: the odd
 # shapes are the surprise in this mode, and a surprise that arrives twice a
-# turn is just the game. At 4.0 the seven classics carry 7x4 = 28 of the 40
-# weight against the twelve odd ones' 12, so **70% of bricks are classic and
-# 30% are not** — 10% each for a classic, 2.5% each for an odd one, and about
-# one brick in three still something you have to think about.
+# turn is just the game. At 16 the seven classics carry 7x16 = 112 of the 124
+# weight against the twelve odd ones' 12, so **90% of bricks are classic and
+# 10% are not** — 12.9% each for a classic, 0.8% each for an odd one, and
+# about one brick in ten something you have to think about.
+#
+# It was 4.0 (70/30, one odd brick in three) from session AC until session
+# AI, when the user, having played it, asked for the odd ones to come "a lot"
+# less often.
 #
 # This is the only number that decides the mix; the pool itself is not
 # re-ordered or trimmed to change it, and every brick keeps a real chance of
 # turning up. 1.0 restores the uniform draw exactly.
-const CLASSIC_BIAS := 4.0
+const CLASSIC_BIAS := 16.0
 
 const PLATFORM_CELLS := 5.0
 const PLATFORM_THICKNESS := 30.0 # the collision slab; the drawn outcrop runs much deeper
