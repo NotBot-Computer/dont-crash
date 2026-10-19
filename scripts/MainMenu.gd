@@ -5,10 +5,16 @@ extends Control
 ## decides which scene to hand off to). Nothing downstream re-derives it.
 ## Pile Up goes through one more screen first — TowerVariantSelect, which
 ## picks free-for-all, teams, co-pilot, co-op or the race.
+##
+## The look (the pixel font, the framed buttons, the brick rain and the
+## brick title) is shared by every menu screen — see PixelUI.
+
+const PixelUI := preload("res://scripts/PixelUI.gd")
 
 func _ready() -> void:
 	$RaceButton.pressed.connect(func(): _play(GameSettings.MODE_RACE))
 	$TowerButton.pressed.connect(func(): _play(GameSettings.MODE_TOWER))
+	PixelUI.apply(self)
 	$RaceButton.grab_focus()
 
 func _play(mode: int) -> void:

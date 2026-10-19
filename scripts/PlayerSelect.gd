@@ -4,12 +4,15 @@ extends Control
 ## are heading into was decided on the main menu (GameSettings.mode), and for
 ## Pile Up which variant on TowerVariantSelect (GameSettings.tower_variant).
 
+const PixelUI := preload("res://scripts/PixelUI.gd")
+
 func _ready() -> void:
 	$Players1Button.pressed.connect(func(): _select(1 if _tower() else 2, not _tower()))
 	$Players2Button.pressed.connect(func(): _select(2))
 	$Players3Button.pressed.connect(func(): _select(3))
 	$Players4Button.pressed.connect(func(): _select(4))
 	$BackButton.pressed.connect(_on_back)
+	PixelUI.apply(self)
 
 	# Pile Up has no AI: BotDriver plays a PlayerBoard — it senses traffic in
 	# an obstacle_container and steers between lane centres, none of which

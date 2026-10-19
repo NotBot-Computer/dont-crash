@@ -21,11 +21,14 @@ extends Control
 ## champion. Enter skips the animation, then moves on.
 ##
 ## Drawn rather than built from Labels, same as TowerHUD: the rows are
-## made of textures, and the animation is a function of one clock.
+## made of textures, and the animation is a function of one clock. It wears
+## the menus' pixel look (PixelUI): their font, and each row in their framed
+## panel. The menus' brick rain is left out on purpose — this screen is read.
 
-const BG := Color(0.078, 0.086, 0.165, 1.0) # the menus' own navy
-const ROW_BG := Color(1.0, 1.0, 1.0, 0.045)
-const STRIPE_W := 6.0
+const PixelUI := preload("res://scripts/PixelUI.gd")
+
+const BG := PixelUI.BG # the menus' own navy
+const STRIPE_W := 9.0
 const TEXT := Color(1.0, 1.0, 1.0, 0.95)
 const DIM := Color(1.0, 1.0, 1.0, 0.62)
 const FAINT := Color(1.0, 1.0, 1.0, 0.38)
@@ -70,9 +73,14 @@ var award: Array[int] = [] # per competitor, what this screen adds (all zero on 
 var place_of: Array[int] = [] # per competitor, 0-based place in the round just played; -1 on the intro
 var champion: int = -1
 var _done_at := 0.0
+var _font: Font
+var _row_frame: StyleBox
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_font = PixelUI.font()
+	_row_frame = PixelUI.panel_frame()
 	# Run on its own (from the editor, or a probe) there is no cup yet.
 	if GameSettings.tower_cup == GameSettings.TOWER_CUP_NONE:
 		GameSettings.tower_cup = GameSettings.TOWER_CUP_SOLO
@@ -148,7 +156,7 @@ func _competitor_color(c: int) -> Color:
 # --- Drawing ---------------------------------------------------------------------
 
 func _draw() -> void:
-	var font: Font = ThemeDB.fallback_font
+	var font: Font = _font
 	draw_rect(Rect2(Vector2.ZERO, size), BG, true)
 	_draw_heading(font)
 
@@ -183,33 +191,34 @@ func _draw_heading(font: Font) -> void:
 		var played: int = GameSettings.cup_variant(GameSettings.cup_round - 1)
 		title = "ROUND %d — %s" % [GameSettings.cup_round, GameSettings.tower_variant_info(played)["title"]]
 		sub = "first to %d trophies wins the %s" % [GameSettings.CUP_TARGET, cup["title"].to_lower()]
-	draw_string(font, Vector2(0.0, 96.0), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 40, title_color)
-	draw_string(font, Vector2(0.0, 134.0), sub, HORIZONTAL_ALIGNMENT_CENTER, size.x, 17, DIM)
+	_shadowed(font, Vector2(0.0, 84.0), title, size.x, 32, title_color)
+	_wrapped(font, 120.0, sub, 16, DIM)
 
 func _draw_footer(font: Font) -> void:
 	if t < _done_at:
 		return
 	var a: float = clampf((t - _done_at) / 0.25, 0.0, 1.0)
 	if champion >= 0:
-		draw_string(font, Vector2(0.0, 712.0), "ENTER for a new cup      ESC for the menu",
-			HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, Color(TEXT.r, TEXT.g, TEXT.b, a))
+		_shadowed(font, Vector2(0.0, 712.0), "ENTER for a new cup      ESC for the menu",
+			size.x, 16, Color(TEXT.r, TEXT.g, TEXT.b, a))
 		return
 	var next: Dictionary = GameSettings.tower_variant_info(GameSettings.cup_variant(GameSettings.cup_round))
-	draw_string(font, Vector2(0.0, 704.0), "ENTER — round %d: %s" % [GameSettings.cup_round + 1, next["title"]],
-		HORIZONTAL_ALIGNMENT_CENTER, size.x, 24, Color(GOLD.r, GOLD.g, GOLD.b, a))
-	draw_string(font, Vector2(0.0, 734.0), next["hint"], HORIZONTAL_ALIGNMENT_CENTER, size.x, 15, Color(DIM.r, DIM.g, DIM.b, DIM.a * a))
-	draw_string(font, Vector2(0.0, 772.0), "ESC leaves the cup", HORIZONTAL_ALIGNMENT_CENTER, size.x, 13, Color(FAINT.r, FAINT.g, FAINT.b, FAINT.a * a))
+	_shadowed(font, Vector2(0.0, 700.0), "ENTER — round %d: %s" % [GameSettings.cup_round + 1, next["title"]],
+		size.x, 24, Color(GOLD.r, GOLD.g, GOLD.b, a))
+	_wrapped(font, 730.0, next["hint"], 16, Color(DIM.r, DIM.g, DIM.b, DIM.a * a))
+	draw_string(font, Vector2(0.0, 786.0), "ESC leaves the cup", HORIZONTAL_ALIGNMENT_CENTER, size.x, 8, Color(FAINT.r, FAINT.g, FAINT.b, FAINT.a * a))
 
 func _draw_row(font: Font, c: int, r: Rect2) -> void:
 	var members: Array[int] = _members(c)
 	var color: Color = _competitor_color(c)
 	var crowned: bool = champion == c and t >= _done_at
-	var bg: Color = ROW_BG
+	draw_style_box(_row_frame, r)
+	# Inside the frame's outline and bevel: three art pixels each.
+	var inner: Rect2 = r.grow(-3.0 * float(PixelUI.PIX))
 	if crowned:
 		var pulse: float = 0.5 + 0.5 * sin((t - _done_at) * 4.0)
-		bg = Color(color.r, color.g, color.b, 0.12 + 0.08 * pulse)
-	draw_rect(r, bg, true)
-	draw_rect(Rect2(r.position, Vector2(STRIPE_W, r.size.y)), color, true)
+		draw_rect(inner, Color(color.r, color.g, color.b, 0.12 + 0.08 * pulse), true)
+	draw_rect(Rect2(inner.position, Vector2(STRIPE_W, inner.size.y)), color, true)
 
 	# The badge: each member's car standing upright, then the name.
 	var mid_y: float = r.position.y + r.size.y * 0.5
@@ -223,13 +232,13 @@ func _draw_row(font: Font, c: int, r: Rect2) -> void:
 	var label: String = GameSettings.cup_name(c)
 	var name_x: float = x + 8.0
 	var name_w: float = r.position.x + BADGE_W - name_x
-	draw_string(font, Vector2(name_x, mid_y + (2.0 if members.size() > 1 else 10.0)), label,
-		HORIZONTAL_ALIGNMENT_LEFT, name_w, 28 if members.size() == 1 else 22, Color(color.r, color.g, color.b, 1.0).lightened(0.1))
+	_shadowed(font, Vector2(name_x, mid_y + (2.0 if members.size() > 1 else 12.0)), label,
+		name_w, 24 if members.size() == 1 else 16, Color(color.r, color.g, color.b, 1.0).lightened(0.1), HORIZONTAL_ALIGNMENT_LEFT)
 	if members.size() > 1:
 		var who: Array[String] = []
 		for s in members:
 			who.append(GameSettings.PLAYER_CONFIGS[s]["name"])
-		draw_string(font, Vector2(name_x, mid_y + 24.0), " + ".join(who), HORIZONTAL_ALIGNMENT_LEFT, name_w, 15, DIM)
+		draw_string(font, Vector2(name_x, mid_y + 26.0), " + ".join(who), HORIZONTAL_ALIGNMENT_LEFT, name_w, 16, DIM)
 
 	# Where it finished this round, once its first new trophy lands (or at
 	# once, for a row that won nothing — that is news too).
@@ -237,9 +246,9 @@ func _draw_row(font: Font, c: int, r: Rect2) -> void:
 	if place_of[c] >= 0 and t >= POP_START:
 		var a: float = clampf((t - POP_START) / 0.2, 0.0, 1.0)
 		var ord: String = ORDINALS[place_of[c]] if place_of[c] < ORDINALS.size() else "%dth" % (place_of[c] + 1)
-		draw_string(font, Vector2(px, mid_y - 2.0), ord, HORIZONTAL_ALIGNMENT_CENTER, PLACE_W, 22, Color(TEXT.r, TEXT.g, TEXT.b, a))
+		_shadowed(font, Vector2(px, mid_y - 2.0), ord, PLACE_W, 24, Color(TEXT.r, TEXT.g, TEXT.b, a))
 		var gold: Color = GOLD if award[c] > 0 else FAINT
-		draw_string(font, Vector2(px, mid_y + 24.0), "+%d" % award[c], HORIZONTAL_ALIGNMENT_CENTER, PLACE_W, 20, Color(gold.r, gold.g, gold.b, gold.a * a))
+		draw_string(font, Vector2(px, mid_y + 26.0), "+%d" % award[c], HORIZONTAL_ALIGNMENT_CENTER, PLACE_W, 16, Color(gold.r, gold.g, gold.b, gold.a * a))
 
 	# The track: CUP_TARGET slots to the flag. A total past the target (14
 	# plus a win) squeezes the slots rather than running off the row.
@@ -270,9 +279,9 @@ func _draw_row(font: Font, c: int, r: Rect2) -> void:
 
 	var count_color: Color = GOLD if total >= GameSettings.CUP_TARGET and shown >= total else TEXT
 	var tx: float = flag_x + FLAG_W + 14.0
-	draw_string(font, Vector2(tx, mid_y + 12.0), "%d" % shown, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, count_color)
-	var num_w: float = font.get_string_size("%d" % shown, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
-	draw_string(font, Vector2(tx + num_w + 4.0, mid_y + 12.0), "/ %d" % GameSettings.CUP_TARGET, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, FAINT)
+	_shadowed(font, Vector2(tx, mid_y + 16.0), "%d" % shown, -1, 32, count_color, HORIZONTAL_ALIGNMENT_LEFT)
+	var num_w: float = font.get_string_size("%d" % shown, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x
+	draw_string(font, Vector2(tx + num_w + 6.0, mid_y + 16.0), "/%d" % GameSettings.CUP_TARGET, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, FAINT)
 
 # Whose car trophy `k` of competitor `c` is: the winner of the round it was
 # won in. A slot the cup has no record for — not yet won, or a total set by
@@ -300,6 +309,19 @@ func _draw_car(tex: Texture2D, center: Vector2, length: float, scale_mult: float
 	var ts: Vector2 = tex.get_size()
 	var size_px := Vector2(length * ts.x / ts.y, length) * scale_mult
 	draw_texture_rect(tex, Rect2(center - size_px * 0.5, size_px), false, modulate_color)
+
+# Text with the menus' hard drop shadow (PixelUI's Labels have the same).
+func _shadowed(font: Font, pos: Vector2, text: String, width: float, font_size: int, color: Color,
+		align: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER) -> void:
+	var off: float = 2.0 if font_size <= 16 else float(PixelUI.PIX)
+	draw_string(font, pos + Vector2(off, off), text, align, width, font_size, Color(0, 0, 0, 0.8 * color.a))
+	draw_string(font, pos, text, align, width, font_size, color)
+
+# A centred line that wraps rather than running off the screen: the pixel
+# font is wide, and the longest hints are past 1500px at 16.
+func _wrapped(font: Font, y: float, text: String, font_size: int, color: Color) -> void:
+	var w: float = size.x - 160.0
+	draw_multiline_string(font, Vector2(80.0, y), text, HORIZONTAL_ALIGNMENT_CENTER, w, font_size, 2, color)
 
 func _draw_flag(top_left: Vector2, h: float) -> void:
 	var rows: int = int(h / FLAG_CELL)

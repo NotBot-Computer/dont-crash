@@ -15,16 +15,17 @@ extends Control
 ## their own under TEAM MODES and each page's cup last; see
 ## docs/PROJECT_STATE.md §5 sessions AE, AG and AH.
 
-const ROW_TOP := 220.0
-const ROW_STEP := 130.0
-const BUTTON_W := 340.0
-const BUTTON_H := 56.0
+const PixelUI := preload("res://scripts/PixelUI.gd")
+
+const ROW_TOP := 294.0
+const ROW_STEP := 140.0
+const BUTTON_W := 408.0
+const BUTTON_H := 63.0
 
 var _rows: Array[Control] = []
 
 func _ready() -> void:
 	$BackButton.pressed.connect(_on_back)
-	$Title.text = "PILE UP"
 	$Subtitle.text = "a different mode every round — first to %d trophies wins" % GameSettings.CUP_TARGET
 
 	var focus: Button = null
@@ -33,6 +34,7 @@ func _ready() -> void:
 		var row: Button = _add_row(c["title"], c["hint"], func(): _pick_cup(id))
 		if id == GameSettings.tower_cup:
 			focus = row
+	PixelUI.apply(self)
 	if focus == null and not _rows.is_empty():
 		focus = _rows[0] as Button
 	if focus != null:
@@ -44,7 +46,6 @@ func _add_row(title: String, hint_text: String, on_press: Callable) -> Button:
 
 	var button := Button.new()
 	button.text = title
-	button.add_theme_font_size_override("font_size", 24)
 	button.anchor_left = 0.5
 	button.anchor_right = 0.5
 	button.offset_left = -BUTTON_W * 0.5
@@ -58,8 +59,8 @@ func _add_row(title: String, hint_text: String, on_press: Callable) -> Button:
 	hint.text = hint_text
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.anchor_right = 1.0
-	hint.offset_top = y + BUTTON_H + 6.0
-	hint.offset_bottom = y + BUTTON_H + 32.0
+	hint.offset_top = y + BUTTON_H + 12.0
+	hint.offset_bottom = y + BUTTON_H + 36.0
 	add_child(hint)
 
 	_rows.append(button)

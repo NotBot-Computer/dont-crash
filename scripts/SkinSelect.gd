@@ -1,5 +1,11 @@
 extends Control
 
+## Each player cycles and locks a colour. The look is PixelUI's: each player
+## is a framed panel, and the frame takes the player's colour once they lock
+## it in, so who is still choosing reads from across the room.
+
+const PixelUI := preload("res://scripts/PixelUI.gd")
+
 @onready var panels_row: HBoxContainer = $PanelsRow
 @onready var hint: Label = $Hint
 
@@ -27,6 +33,7 @@ func _ready() -> void:
 		indices[i] = i % GameSettings.PLAYER_SKINS.size()
 		ready_flags[i] = false
 	_build_panels()
+	PixelUI.apply(self)
 	_refresh()
 
 func _build_panels() -> void:
@@ -37,14 +44,16 @@ func _build_panels() -> void:
 	for i in range(GameSettings.player_count):
 		var cfg: Dictionary = GameSettings.PLAYER_CONFIGS[i]
 
+		var frame := PanelContainer.new()
+		panels_row.add_child(frame)
 		var panel := VBoxContainer.new()
-		panel.custom_minimum_size = Vector2(220, 0)
-		panel.add_theme_constant_override("separation", 12)
-		panels_row.add_child(panel)
+		panel.custom_minimum_size = Vector2(246, 0)
+		panel.add_theme_constant_override("separation", 15)
+		frame.add_child(panel)
 
 		var name_label := Label.new()
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_label.add_theme_font_size_override("font_size", 20)
+		name_label.add_theme_font_size_override("font_size", 24)
 		panel.add_child(name_label)
 
 		var swatch_wrap := CenterContainer.new()
@@ -58,11 +67,13 @@ func _build_panels() -> void:
 		var status_label := Label.new()
 		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-		status_label.custom_minimum_size = Vector2(220, 50)
+		status_label.custom_minimum_size = Vector2(246, 72)
 		panel.add_child(status_label)
 
 		panel_refs.append({
 			"cfg": cfg,
+			"frame": frame,
+			"ready_look": Color(0, 0, 0, 0),
 			"name_label": name_label,
 			"swatch": swatch,
 			"status_label": status_label,
@@ -90,6 +101,7 @@ func _refresh() -> void:
 		var skin: Dictionary = GameSettings.PLAYER_SKINS[indices[i]]
 		ref["swatch"].texture = skin["texture"]
 		ref["name_label"].text = skin["name"]
+		_frame_panel(ref, _is_ready(i), skin["color"])
 		var cfg: Dictionary = ref["cfg"]
 		if race and GameSettings.bot_flags[i]:
 			ref["status_label"].text = "BOT (%s)\n%s to take back" % [
@@ -119,6 +131,19 @@ func _refresh() -> void:
 		GameSettings.skin_colors = chosen_colors
 		await get_tree().create_timer(0.4).timeout
 		get_tree().change_scene_to_file(_next_scene())
+
+# A locked-in panel is ringed in its own colour. Only rebuilt when that
+# changes, or on a colour change while locked (a bot slot can be either).
+func _frame_panel(ref: Dictionary, locked: bool, color: Color) -> void:
+	var look: Color = color if locked else Color(0, 0, 0, 0)
+	if ref["ready_look"] == look:
+		return
+	ref["ready_look"] = look
+	var frame: PanelContainer = ref["frame"]
+	if locked:
+		frame.add_theme_stylebox_override("panel", PixelUI.panel_frame(color))
+	else:
+		frame.remove_theme_stylebox_override("panel")
 
 func _next_scene() -> String:
 	if race:
