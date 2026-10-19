@@ -16,16 +16,18 @@ extends Control
 const PixelUI := preload("res://scripts/PixelUI.gd")
 
 const CELL_ART := 10 # art pixels per brick cell; a cell is CELL_ART * PIX on screen
-const MAX_ROWS := 5 # the pile sinks once a column reaches this
-const PREWARM_ROWS := 3
+# Tunable per instance: the main menu's Pile Up card runs one of these at
+# full strength inside its preview.
+@export var max_rows := 5 # the pile sinks once a column reaches this
+@export var prewarm_rows := 3
+@export var fall_alpha := 0.34
+@export var pile_alpha := 0.75
 const SPAWN_MIN := 0.5
 const SPAWN_MAX := 1.1
 const MAX_FALLING := 9
 const FALL_MIN := 55.0
 const FALL_MAX := 100.0
 const CLASSIC_SHARE := 0.85 # the odd bricks are rarer in the game too
-const FALL_ALPHA := 0.34
-const PILE_ALPHA := 0.75
 const SINK_TIME := 1.1
 
 var cell: float = float(CELL_ART * PixelUI.PIX)
@@ -47,10 +49,19 @@ var _started := false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# Start as soon as there is a size, even with processing off — a paused
+	# rain (the unselected mode card) still shows its pile and its sky.
+	resized.connect(_try_start)
+	_try_start.call_deferred()
 	for i in range(GameSettings.BRICKS.size()):
 		var b: Dictionary = GameSettings.BRICKS[i]
 		_colors.append(PixelUI.brick_color(b))
 		(_classic if b["classic"] else _odd).append(i)
+
+func _try_start() -> void:
+	if not _started and size.x > 0.0:
+		_start()
+		queue_redraw()
 
 func _process(delta: float) -> void:
 	if not _started:
@@ -90,11 +101,11 @@ func _start() -> void:
 	for _n in range(60):
 		var p: Dictionary = _make_piece()
 		var base: int = _base_for(p)
-		if base + int(p["h"]) > PREWARM_ROWS:
+		if base + int(p["h"]) > prewarm_rows:
 			continue
 		_land(p, base)
 	for _n in range(6):
-		_spawn(randf_range(0.0, size.y - float(MAX_ROWS + 2) * cell))
+		_spawn(randf_range(0.0, maxf(0.0, size.y - float(max_rows + 2) * cell)))
 	spawn_in = randf_range(SPAWN_MIN, SPAWN_MAX)
 
 func _pick_brick() -> int:
@@ -160,7 +171,7 @@ func _land(p: Dictionary, base: int) -> void:
 	pile.append({"key": p["key"], "gx": p["gx"], "w": p["w"], "h": p["h"], "base": base})
 	# Full: the pile sinks away and the next one starts on an empty floor
 	# straight away, so the rain never stops.
-	if tallest >= MAX_ROWS:
+	if tallest >= max_rows:
 		sinking = pile
 		pile = []
 		sink_t = 0.0
@@ -180,10 +191,10 @@ func _draw() -> void:
 	if not _started:
 		return
 	var k: float = clampf(sink_t / SINK_TIME, 0.0, 1.0)
-	var drop: float = k * k * float(MAX_ROWS + 1) * cell
+	var drop: float = k * k * float(max_rows + 1) * cell
 	for p in sinking:
-		_draw_piece(p, size.y - float(p["base"]) * cell + drop, PILE_ALPHA * (1.0 - k * 0.5))
+		_draw_piece(p, size.y - float(p["base"]) * cell + drop, pile_alpha * (1.0 - k * 0.5))
 	for p in pile:
-		_draw_piece(p, size.y - float(p["base"]) * cell, PILE_ALPHA)
+		_draw_piece(p, size.y - float(p["base"]) * cell, pile_alpha)
 	for p in falling:
-		_draw_piece(p, p["y"], FALL_ALPHA)
+		_draw_piece(p, p["y"], fall_alpha)
