@@ -8,64 +8,45 @@ extends Control
 ## chosen cup allows, and the first round's variant is set here so the count
 ## and colour screens seat people the way that round will.
 ##
-## The rows are built from the table rather than laid out in the scene, so
-## the list of cups and the screen that offers them cannot disagree.
+## A card per cup, built from the table so the list of cups and the screen
+## that offers them cannot disagree, picked like the main menu's (CardRow:
+## left/right, Enter, Esc back). The solo cup's preview is one tower, the
+## team cup's two towers face to face. The card carries only the cup's name;
+## the line under the title is the selected cup's hint.
 ##
 ## It used to list the variants themselves, with the team ones on a page of
 ## their own under TEAM MODES and each page's cup last; see
 ## docs/PROJECT_STATE.md §5 sessions AE, AG and AH.
 
 const PixelUI := preload("res://scripts/PixelUI.gd")
+const ModeCard := preload("res://scripts/ModeCard.gd")
 
-const ROW_TOP := 294.0
-const ROW_STEP := 140.0
-const BUTTON_W := 408.0
-const BUTTON_H := 63.0
-
-var _rows: Array[Control] = []
+@onready var row: Control = $Cards
+var _cups: Array[Dictionary] = []
 
 func _ready() -> void:
-	$BackButton.pressed.connect(_on_back)
 	$Subtitle.text = "a different mode every round — first to %d trophies wins" % GameSettings.CUP_TARGET
-
-	var focus: Button = null
-	for c: Dictionary in GameSettings.TOWER_CUPS:
-		var id: int = c["id"]
-		var row: Button = _add_row(c["title"], c["hint"], func(): _pick_cup(id))
-		if id == GameSettings.tower_cup:
-			focus = row
 	PixelUI.apply(self)
-	if focus == null and not _rows.is_empty():
-		focus = _rows[0] as Button
-	if focus != null:
-		focus.grab_focus()
+	add_child(PixelUI.key_badge("ESC  BACK"))
+	add_child(PixelUI.key_badge("← →  CHOOSE   ENTER  OK", true))
 
-# A button and its hint line, at the next free row.
-func _add_row(title: String, hint_text: String, on_press: Callable) -> Button:
-	var y: float = ROW_TOP + float(_rows.size()) * 0.5 * ROW_STEP
-
-	var button := Button.new()
-	button.text = title
-	button.anchor_left = 0.5
-	button.anchor_right = 0.5
-	button.offset_left = -BUTTON_W * 0.5
-	button.offset_right = BUTTON_W * 0.5
-	button.offset_top = y
-	button.offset_bottom = y + BUTTON_H
-	button.pressed.connect(on_press)
-	add_child(button)
-
-	var hint := Label.new()
-	hint.text = hint_text
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.anchor_right = 1.0
-	hint.offset_top = y + BUTTON_H + 12.0
-	hint.offset_bottom = y + BUTTON_H + 36.0
-	add_child(hint)
-
-	_rows.append(button)
-	_rows.append(hint)
-	return button
+	var first := 0
+	for c: Dictionary in GameSettings.TOWER_CUPS:
+		var card: Control = ModeCard.new()
+		card.title = c["title"]
+		if c["id"] == GameSettings.TOWER_CUP_TEAM:
+			card.kind = ModeCard.Kind.TOWERS
+			card.count = 2
+		else:
+			card.kind = ModeCard.Kind.TOWER
+		if c["id"] == GameSettings.tower_cup:
+			first = _cups.size()
+		_cups.append(c)
+		row.add_card(card)
+	row.selection_changed.connect(func(i: int): $Hint.text = _cups[i]["hint"])
+	row.chosen.connect(func(i: int): _pick_cup(_cups[i]["id"]))
+	row.back.connect(_on_back)
+	row.select(first)
 
 # The scores themselves start when the colours are locked (SkinSelect), once
 # the number of players is known.

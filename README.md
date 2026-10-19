@@ -136,7 +136,7 @@ The tower itself stands on a rock outcrop whose body is cut from the same pictur
 
 ## Menu art
 
-The menus — the title screen, the cup picker, the player count, the colour pick and the cup's trophy count — are pixel art built from Pile Up's own bricks. The title screen is two big cards, one per mode, picked with the **left/right arrow keys** and started with **Enter** (the mouse does nothing there); each card is just a preview and the mode's name; the selected one plays its preview — cars driving up the road for Don't Crash, bricks falling and piling up for Pile Up — and the other holds still, dimmed. The title is spelled in bricks: each letter is one brick-shaped piece, outlined and bevelled the way the bricks are, in the seven classic bricks' colours, and the letters drop in when the screen opens. Behind every menu but the trophy count the bricks rain down and pile up along the bottom; a full pile sinks away and a new one starts. Buttons and panels are chunky framed boxes with notched corners, and the keyboard's current button is lit in the O brick's yellow. Nothing here is new art: shapes come from `GameSettings.BRICKS` and colours are read off the brick sprites themselves (`scripts/PixelUI.gd`).
+The menus — the title screen, the cup picker, the player count, the colour pick and the cup's trophy count — are pixel art built from Pile Up's own bricks. The title screen, Pile Up's cup picker and the player count are rows of big cards, picked with the **left/right arrow keys**, chosen with **Enter** and left with **Esc** (the mouse does nothing there). Each card is just a preview and a name; the selected one plays its preview and the rest hold still, dimmed: cars driving up the road for Don't Crash, bricks falling and piling up for Pile Up, one tower for the solo cup and two for the team cup, and on the player count that many split-screen roads with a car each, or that many strips with a brick falling in each. The title is spelled in bricks: each letter is one brick-shaped piece, outlined and bevelled the way the bricks are, in the seven classic bricks' colours, and the letters drop in when the screen opens. Behind every menu but the trophy count the bricks rain down and pile up along the bottom; a full pile sinks away and a new one starts. Buttons and panels are chunky framed boxes with notched corners, and the keyboard's current button is lit in the O brick's yellow. Nothing here is new art: shapes come from `GameSettings.BRICKS` and colours are read off the brick sprites themselves (`scripts/PixelUI.gd`).
 
 The font is **Press Start 2P** by CodeMan38 (`fonts/PressStart2P-Regular.ttf`), under the **SIL Open Font License 1.1** — the licence is committed beside it as `fonts/PressStart2P-OFL.txt`. It is imported with antialiasing, hinting and subpixel positioning off, and sized in multiples of 8 so its pixels stay square. Only the menus use it; the in-round HUDs still use Godot's default font.
 
@@ -190,7 +190,8 @@ scripts/
   PixelUI.gd           the menus' pixel look: font, framed buttons and panels, bricks redrawn as pixel art
   BrickRain.gd         bricks raining and piling up behind a menu
   BrickTitle.gd        a title spelled in brick-shaped letters that drop in
-  ModeCard.gd          one of the title screen's two mode cards, with its live preview
+  ModeCard.gd          one menu card with its live preview
+  CardRow.gd           a row of cards picked with the arrow keys, Enter and Esc
   SkinSelect.gd        dynamic per-player sprite-pick panels, duplicate-skin avoidance
   Main.gd              instantiates PlayerBoards + dividers for the chosen player count
   PlayerBoard.gd        steering physics, spawning, scoring, collision handling

@@ -35,15 +35,17 @@ const HOT := Color(1.0, 0.86, 0.16, 1.0)
 const HOT_LIGHT := Color(1.0, 0.96, 0.62, 1.0)
 const HOT_SHADE := Color(0.82, 0.52, 0.04, 1.0)
 const HOT_TEXT := Color(0.10, 0.07, 0.12, 1.0)
-const PANEL := Color(0.11, 0.12, 0.24, 0.92)
+# Opaque: a card's preview must not show the menu's own brick rain
+# drifting through it as dark ghosts (screenshot).
+const PANEL := Color(0.11, 0.12, 0.24, 1.0)
 
 static func font() -> Font:
 	return load(FONT_PATH)
 
-# A framed box as a nine-slice: a 7x7 art-pixel tile with notched corners —
-# outline, a one-pixel bevel lit from the top left, then the face.
-static func frame(face: Color, light: Color, shade: Color, ink: Color = INK) -> StyleBoxTexture:
-	var n := 7
+# A framed box as a nine-slice: an n x n art-pixel tile with notched corners —
+# outline, a one-pixel bevel lit from the top left, then the face. n is 7 for
+# buttons and panels; 5 is the thin ring of a card's strips (well()).
+static func frame(face: Color, light: Color, shade: Color, ink: Color = INK, n: int = 7) -> StyleBoxTexture:
 	var img := Image.create(n * PIX, n * PIX, false, Image.FORMAT_RGBA8)
 	for y in range(n):
 		for x in range(n):
@@ -63,11 +65,24 @@ static func frame(face: Color, light: Color, shade: Color, ink: Color = INK) -> 
 			img.fill_rect(Rect2i(x * PIX, y * PIX, PIX, PIX), c)
 	var box := StyleBoxTexture.new()
 	box.texture = ImageTexture.create_from_image(img)
-	box.set_texture_margin_all(3 * PIX)
+	box.set_texture_margin_all(float((n - 1) * PIX) * 0.5)
 	box.content_margin_left = 5 * PIX
 	box.content_margin_right = 5 * PIX
 	box.content_margin_top = 3 * PIX
 	box.content_margin_bottom = 3 * PIX
+	return box
+
+# The thin ring round one strip of a card's preview — one board, one tower —
+# WELL pixels deep, hollow so the strip shows through. Tinted when the strip
+# belongs to a seat.
+const WELL := 2 * PIX
+static func well(accent: Color = Color(0, 0, 0, 0)) -> StyleBoxTexture:
+	var box: StyleBoxTexture
+	if accent.a <= 0.0:
+		box = frame(Color(0, 0, 0, 0), FACE_LIGHT, FACE_SHADE, INK, 5)
+	else:
+		box = frame(Color(0, 0, 0, 0), accent.lightened(0.3), accent.darkened(0.3), accent.darkened(0.72), 5)
+	box.draw_center = false
 	return box
 
 static func button_frame() -> StyleBoxTexture:
@@ -120,6 +135,30 @@ static func apply(root: Control) -> void:
 	root.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	for b: Button in root.find_children("*", "Button", true, false):
 		b.mouse_entered.connect(b.grab_focus)
+
+# A small framed key reminder ("ESC  BACK") for a screen corner. Not a
+# button: the menus are driven by the keyboard, and it never takes the mouse.
+# `right` anchors it to the top-right corner instead of the top-left.
+static func key_badge(text: String, right: bool = false) -> PanelContainer:
+	var box := PanelContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_stylebox_override("panel", button_frame())
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 16)
+	box.add_child(label)
+	if right:
+		box.anchor_left = 1.0
+		box.anchor_right = 1.0
+		box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		box.offset_left = -24.0
+		box.offset_right = -24.0
+	else:
+		box.offset_left = 24.0
+		box.offset_right = 24.0
+	box.offset_top = 24.0
+	box.offset_bottom = 24.0
+	return box
 
 # --- Bricks as pixel art ----------------------------------------------------------
 

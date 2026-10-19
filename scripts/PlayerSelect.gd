@@ -5,41 +5,56 @@ extends Control
 ## Pile Up which variant on TowerVariantSelect (GameSettings.tower_variant).
 
 const PixelUI := preload("res://scripts/PixelUI.gd")
+const ModeCard := preload("res://scripts/ModeCard.gd")
+
+# One card per count on offer, picked like the main menu's (CardRow:
+# left/right, Enter, Esc back). Each card's preview shows that many players:
+# in Don't Crash that many split-screen roads with a car each (the bot one
+# tagged), in Pile Up that many strips with one brick falling in each.
+@onready var row: Control = $Cards
+var _options: Array[Dictionary] = [] # count, solo
 
 func _ready() -> void:
-	$Players1Button.pressed.connect(func(): _select(1 if _tower() else 2, not _tower()))
-	$Players2Button.pressed.connect(func(): _select(2))
-	$Players3Button.pressed.connect(func(): _select(3))
-	$Players4Button.pressed.connect(func(): _select(4))
-	$BackButton.pressed.connect(_on_back)
 	PixelUI.apply(self)
+	add_child(PixelUI.key_badge("ESC  BACK"))
+	add_child(PixelUI.key_badge("← →  CHOOSE   ENTER  OK", true))
 
 	# Pile Up has no AI: BotDriver plays a PlayerBoard — it senses traffic in
 	# an obstacle_container and steers between lane centres, none of which
-	# exists in the tower mode. So the bot hints are race-only until a tower
-	# bot exists (docs/PROJECT_STATE.md §9). The one-player button is reused
-	# by the tower for something else entirely: co-op is the only variant with
-	# no opponent, so it is the only one a person can play alone.
+	# exists in the tower mode. So the bot hints and the vs-BOT card are
+	# race-only until a tower bot exists (docs/PROJECT_STATE.md §9). Co-op is
+	# the only variant with no opponent, so in the tower a count of one is a
+	# lone builder, offered only where the variant allows it.
 	if not _tower():
-		$Players1Button.visible = true
-		$Hint.visible = true
 		$Title.text = "HOW MANY PLAYERS?"
-		$Players1Button.grab_focus()
-		return
+		$Hint.visible = true
+		_add_option("1 PLAYER vs BOT", 2, true)
+		for n in [2, 3, 4]:
+			_add_option("%d PLAYERS" % n, n, false)
+	else:
+		var info: Dictionary = GameSettings.tower_pick_info()
+		$Title.text = "%s — HOW MANY BUILDERS?" % info["title"]
+		$Hint.visible = true
+		$Hint.text = _cup_hint() if GameSettings.tower_cup != GameSettings.TOWER_CUP_NONE else _seating_hint(GameSettings.tower_variant)
+		for n in [1, 2, 3, 4]:
+			if (info["counts"] as Array).has(n):
+				_add_option("1 BUILDER" if n == 1 else "%d PLAYERS" % n, n, false)
+	row.chosen.connect(func(i: int): _select(_options[i]["count"], _options[i]["solo"]))
+	row.back.connect(_on_back)
+	row.select(0)
 
-	var info: Dictionary = GameSettings.tower_pick_info()
-	var counts: Array = info["counts"]
-	var buttons: Array[Button] = [$Players1Button, $Players2Button, $Players3Button, $Players4Button]
-	$Players1Button.text = "1 BUILDER"
-	for i in range(buttons.size()):
-		buttons[i].visible = counts.has(i + 1)
-	$Title.text = "%s — HOW MANY BUILDERS?" % info["title"]
-	$Hint.visible = true
-	$Hint.text = _cup_hint() if GameSettings.tower_cup != GameSettings.TOWER_CUP_NONE else _seating_hint(GameSettings.tower_variant)
-	for b in buttons:
-		if b.visible:
-			b.grab_focus()
-			break
+func _add_option(title: String, count: int, solo: bool) -> void:
+	var card: Control = ModeCard.new()
+	card.title = title
+	card.count = count
+	if _tower():
+		card.kind = ModeCard.Kind.TOWERS
+		card.one_at_a_time = true
+	else:
+		card.kind = ModeCard.Kind.ROADS
+		card.bot_last = solo
+	_options.append({"count": count, "solo": solo})
+	row.add_card(card)
 
 func _tower() -> bool:
 	return GameSettings.mode == GameSettings.MODE_TOWER
@@ -70,7 +85,7 @@ func _cup_hint() -> String:
 
 # `solo` is the race's single-player entry point: that mode is a race between
 # boards, so there has to be something to race — it is really "two boards, one
-# of them driven by BotDriver". Any other slot can still be turned over to a
+# of them driven by BotDriver", which is why its card shows two roads. Any other slot can still be turned over to a
 # bot from SkinSelect (the 1-4 keys), including all of them at once if you
 # just want to watch.
 func _select(count: int, solo: bool = false) -> void:

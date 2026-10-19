@@ -15,22 +15,24 @@ extends Control
 
 const PixelUI := preload("res://scripts/PixelUI.gd")
 
-const CELL_ART := 10 # art pixels per brick cell; a cell is CELL_ART * PIX on screen
 # Tunable per instance: the main menu's Pile Up card runs one of these at
 # full strength inside its preview.
 @export var max_rows := 5 # the pile sinks once a column reaches this
 @export var prewarm_rows := 3
 @export var fall_alpha := 0.34
 @export var pile_alpha := 0.75
+@export var cell_art := 10 # art pixels per brick cell; a cell is cell_art * PIX on screen
+# 1 makes it one brick at a time — the player-count cards, a brick per player.
+@export var max_falling := 9
+@export var fall_speed := 1.0 # times FALL_MIN..FALL_MAX
 const SPAWN_MIN := 0.5
 const SPAWN_MAX := 1.1
-const MAX_FALLING := 9
 const FALL_MIN := 55.0
 const FALL_MAX := 100.0
 const CLASSIC_SHARE := 0.85 # the odd bricks are rarer in the game too
 const SINK_TIME := 1.1
 
-var cell: float = float(CELL_ART * PixelUI.PIX)
+var cell := 30.0 # set from cell_art in _ready
 var _textures := {} # "brick:quarter" -> ImageTexture
 var _colors: Array[Color] = []
 var _classic: Array[int] = []
@@ -49,6 +51,7 @@ var _started := false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	cell = float(cell_art * PixelUI.PIX)
 	# Start as soon as there is a size, even with processing off — a paused
 	# rain (the unselected mode card) still shows its pile and its sky.
 	resized.connect(_try_start)
@@ -71,7 +74,7 @@ func _process(delta: float) -> void:
 	spawn_in -= delta
 	if spawn_in <= 0.0:
 		spawn_in = randf_range(SPAWN_MIN, SPAWN_MAX)
-		if falling.size() < MAX_FALLING:
+		if falling.size() < max_falling:
 			_spawn(randf_range(-cell * 2.0, 0.0))
 
 	var still: Array[Dictionary] = []
@@ -104,7 +107,7 @@ func _start() -> void:
 		if base + int(p["h"]) > prewarm_rows:
 			continue
 		_land(p, base)
-	for _n in range(6):
+	for _n in range(mini(6, max_falling)):
 		_spawn(randf_range(0.0, maxf(0.0, size.y - float(max_rows + 2) * cell)))
 	spawn_in = randf_range(SPAWN_MIN, SPAWN_MAX)
 
@@ -117,10 +120,18 @@ func _pick_brick() -> int:
 # brick's lowest cell in column i sits above its bottom edge, `top[i]` how
 # tall it stands in that column — both in cells — which is all a landing
 # needs to know.
+# In a strip narrower than a brick, another brick (or another turn) is
+# drawn until one fits.
 func _make_piece() -> Dictionary:
-	var idx: int = _pick_brick()
-	var quarter: int = randi() % 4
-	var occ: Array = PixelUI.brick_cells(GameSettings.BRICKS[idx], quarter)
+	var idx := 0
+	var quarter := 0
+	var occ: Array = []
+	for _try in range(24):
+		idx = _pick_brick()
+		quarter = randi() % 4
+		occ = PixelUI.brick_cells(GameSettings.BRICKS[idx], quarter)
+		if (occ[0] as Array).size() <= cols:
+			break
 	var h: int = occ.size()
 	var w: int = (occ[0] as Array).size()
 	var low: Array[int] = []
@@ -137,7 +148,7 @@ func _make_piece() -> Dictionary:
 		top.append(h - hi)
 	var key := "%d:%d" % [idx, quarter]
 	if not _textures.has(key):
-		_textures[key] = PixelUI.cells_texture(occ, _colors[idx], CELL_ART)
+		_textures[key] = PixelUI.cells_texture(occ, _colors[idx], cell_art)
 	return {"key": key, "gx": randi() % maxi(1, cols - w + 1), "w": w, "h": h, "low": low, "top": top}
 
 # A new falling brick whose columns no other falling brick is using.
@@ -151,7 +162,7 @@ func _spawn(bottom_y: float) -> void:
 				break
 		if clear:
 			p["y"] = bottom_y
-			p["speed"] = randf_range(FALL_MIN, FALL_MAX)
+			p["speed"] = randf_range(FALL_MIN, FALL_MAX) * fall_speed
 			falling.append(p)
 			return
 
