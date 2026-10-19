@@ -45,7 +45,7 @@ const SKILLS := {
 	"nightfall": {
 		"category": "opponent",
 		"title": "NIGHTFALL",
-		"blurb": "Their next brick falls in the dark: only a lantern around it, the tower unseen but for flickers, until the last few blocks",
+		"blurb": "Night falls on their next two turns: tower and brick both unseen, but for a flash whenever lightning strikes",
 		"script": preload("res://scripts/tower_skills/NightfallSkill.gd"),
 		"glyph": preload("res://sprites/skills/tower_nightfall.png"),
 	},

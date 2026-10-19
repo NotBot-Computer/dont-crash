@@ -81,7 +81,7 @@ The nine skills, by pack (`scripts/tower_skills/packs/`):
 | A | **PETRIFY** | self | The tower is stone until your turn ends. Whatever it was going to drop, it drops on the next player's clock. |
 | B | **PLUMB LINE** | self | Your brick falls at half speed with a line to exactly where it will land — any corner over thin air shows red. |
 | B | **CROSSWIND** | hex | A wind gusts across their next turn, shoving the brick a whole block sideways every gust — and it may turn on them. |
-| B | **NIGHTFALL** | hex | Their next brick falls in the dark: only a lantern around it, the tower unseen but for flickers, until the last few blocks. |
+| B | **NIGHTFALL** | hex | Night falls on their next **two** turns: the tower and their own falling brick both vanish, and the only look they get is when lightning strikes — a third of a second of daylight every couple of seconds. The lights come back up the moment the brick lands, and for good once the two turns are over. |
 | C | **TAILOR** | self | Your NEXT brick is cut to fit the top of the tower — whichever shape fills the gaps best, instead of the one on the card — with a ghost showing where it goes. |
 | C | **KEYSTONE** | hex | A brick is pulled out from under the top of the tower on their turn — whatever comes down is on them. |
 | C | **RUBBLE** | hex | A stray brick drops onto the tower at the start of their turn, a beat ahead of their own. It costs nothing if it bounces off — whatever it knocks off is on them, and whatever it leaves is theirs to build on. |
