@@ -1,6 +1,6 @@
 extends Control
 
-## A title spelled in Pile Up's bricks: each letter is one brick-shaped piece
+## A title spelled in tetromino-style bricks: each letter is one brick-shaped piece
 ## cut from a 5x7 grid — square and joined edge to edge, never only at a
 ## corner, because a cell that meets the rest only diagonally draws as a
 ## loose block once each letter is outlined like a brick. Drawn the way the
@@ -8,8 +8,9 @@ extends Control
 ## in turn. The letters drop in one after
 ## another when the screen opens and land with a small bounce.
 ##
-## Centred horizontally in its own rect, top-aligned. Only A-Z and space;
-## anything else is left out.
+## Centred horizontally in its own rect, top-aligned. Only A-Z, the
+## apostrophe and space; anything else is left out. A glyph is as wide as its
+## rows (the apostrophe is one cell), and always GLYPH_H tall.
 
 const PixelUI := preload("res://scripts/PixelUI.gd")
 
@@ -40,8 +41,8 @@ const GLYPHS := {
 	"X": ["#   #", "## ##", " ### ", "  #  ", " ### ", "## ##", "#   #"],
 	"Y": ["#   #", "## ##", " ### ", "  #  ", "  #  ", "  #  ", "  #  "],
 	"Z": ["#####", "    #", "   ##", "  ## ", " ##  ", "##   ", "#####"],
+	"'": ["#", "#", " ", " ", " ", " ", " "],
 }
-const GLYPH_W := 5
 const GLYPH_H := 7
 const LETTER_GAP := 1 # cells
 const SPACE_W := 3 # cells
@@ -52,12 +53,12 @@ const DROP_DELAY := 0.07 # between one letter starting to fall and the next
 const DROP_TIME := 0.32
 const BOUNCE_TIME := 0.16
 
-@export var text := "TRAFFIC TOWER"
+@export var text := "DON'T CRASH"
 @export var cell_art := 6 # art pixels per cell; a cell is cell_art * PIX on screen
 @export var animate := true
 
 var t := 0.0
-var _letters: Array[Dictionary] = [] # tex, x (cells from the left edge)
+var _letters: Array[Dictionary] = [] # tex, x (cells from the left edge), w (cells)
 var _width_cells := 0
 
 func _ready() -> void:
@@ -76,9 +77,11 @@ func _ready() -> void:
 			continue
 		if not GLYPHS.has(ch):
 			continue
-		var occ: Array = PixelUI.cells_from_rows(PackedStringArray(GLYPHS[ch]))
-		_letters.append({"tex": PixelUI.cells_texture(occ, colors[n % colors.size()], cell_art), "x": x})
-		x += GLYPH_W + LETTER_GAP
+		var rows := PackedStringArray(GLYPHS[ch])
+		var gw: int = rows[0].length()
+		var occ: Array = PixelUI.cells_from_rows(rows)
+		_letters.append({"tex": PixelUI.cells_texture(occ, colors[n % colors.size()], cell_art), "x": x, "w": gw})
+		x += gw + LETTER_GAP
 		n += 1
 	_width_cells = maxi(0, x - LETTER_GAP)
 	custom_minimum_size.y = float(GLYPH_H * cell_art * PixelUI.PIX)
@@ -114,4 +117,4 @@ func _draw() -> void:
 		elif lt < DROP_TIME + BOUNCE_TIME:
 			y = -cell * 0.5 * sin((lt - DROP_TIME) / BOUNCE_TIME * PI)
 		y = floorf(y / px) * px
-		draw_texture_rect(l["tex"], Rect2(left + float(l["x"]) * cell, y, float(GLYPH_W) * cell, h), false)
+		draw_texture_rect(l["tex"], Rect2(left + float(l["x"]) * cell, y, float(l["w"]) * cell, h), false)

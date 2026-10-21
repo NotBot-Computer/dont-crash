@@ -11,15 +11,10 @@ extends Control
 ## Previews, all made of the game's own art:
 ##   RACE   the road scrolling down and cars driving up it, in lanes, each
 ##          lane at its own pace so nothing ever overlaps (main menu).
-##   TOWER  one BrickRain at full strength: one tower (main menu, solo cup).
-##   TOWERS `count` BrickRains side by side: two towers for the team cup;
-##          with `one_at_a_time`, a brick per strip — one per player on the
-##          player-count screen — each strip standing on a floor in that
-##          seat's default colour.
 ##   ROADS  `count` roads side by side, split-screen, a player's car on each
-##          (Don't Crash's player count); `bot_last` tags the last one BOT.
+##          (the player count); `bot_last` tags the last one BOT.
 ##
-## In TOWERS and ROADS every strip is its own well: a dark floor inside a
+## In ROADS every strip is its own well: a dark floor inside a
 ## thin pixel ring (PixelUI.well), with the card's face showing between
 ## strips. A thin black line between them did not read as separate boards.
 ## On the player count each ring is in its seat's colour.
@@ -28,10 +23,9 @@ extends Control
 ## from the card's size. Never takes the mouse.
 
 const PixelUI := preload("res://scripts/PixelUI.gd")
-const BrickRain := preload("res://scripts/BrickRain.gd")
 const ROAD_TEXTURE := preload("res://sprites/road/road_tile.png")
 
-enum Kind { RACE, TOWER, TOWERS, ROADS }
+enum Kind { RACE, ROADS }
 
 const INSET := 18.0 # frame to preview
 const NAME_BAND := 66.0 # under the preview, for the name
@@ -39,7 +33,6 @@ const TITLE_SIZE := 24
 const DIM := Color(0.5, 0.52, 0.6, 1.0)
 const SPLIT := 9.0 # the card's face between two strips
 const WELL_BG := Color(0.055, 0.06, 0.13, 1.0)
-const FLOOR_H := 6.0
 
 # The race preview, in the Road's own terms (Road.SHOULDER_RATIO, 5 lanes).
 const SHOULDER_RATIO := 0.1287
@@ -60,7 +53,6 @@ const BOARD_CAR_MAX_W := 46.0
 @export var kind: Kind = Kind.RACE
 @export var title := ""
 @export var count := 1
-@export var one_at_a_time := false
 @export var bot_last := false
 
 var selected := false:
@@ -72,7 +64,6 @@ var _font: Font
 var _frame: StyleBox
 var _frame_hot: StyleBox
 var _preview: Control
-var _rains: Array[Control] = []
 var _wells: Array[StyleBox] = [] # one ring per strip
 var t := 0.0
 
@@ -96,31 +87,20 @@ func _ready() -> void:
 	_preview.size = Vector2(size.x - INSET * 2.0, size.y - INSET - NAME_BAND)
 	add_child(_preview)
 
-	if kind == Kind.TOWERS or kind == Kind.ROADS:
-		var seats: bool = kind == Kind.ROADS or one_at_a_time
+	if kind == Kind.ROADS:
 		for i in range(count):
-			_wells.append(PixelUI.well(_seat_color(i) if seats else Color(0, 0, 0, 0)))
-
-	match kind:
-		Kind.TOWER:
-			_add_rain(Rect2(Vector2.ZERO, _preview.size), 10, 6)
-		Kind.TOWERS:
-			_build_towers()
-		Kind.ROADS:
-			for i in range(count):
-				_phase.append(randf() * TAU)
-			_preview.draw.connect(_draw_roads)
-		_:
-			_preview.draw.connect(_draw_race)
-			_start_race()
+			_wells.append(PixelUI.well(_seat_color(i)))
+			_phase.append(randf() * TAU)
+		_preview.draw.connect(_draw_roads)
+	else:
+		_preview.draw.connect(_draw_race)
+		_start_race()
 	_apply_selected()
 
 func _apply_selected() -> void:
 	if _preview == null:
 		return
 	_preview.modulate = Color.WHITE if selected else DIM
-	for r in _rains:
-		r.set_process(selected)
 	queue_redraw()
 
 func _process(delta: float) -> void:
@@ -147,28 +127,11 @@ func _draw() -> void:
 	draw_string(_font, Vector2(off, y + off), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, fs, PixelUI.SHADOW)
 	draw_string(_font, Vector2(0.0, y), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, fs, tc)
 
-# --- Towers ---------------------------------------------------------------------
-
-func _add_rain(r: Rect2, cell_art: int, max_rows: int) -> Control:
-	var rain: Control = BrickRain.new()
-	rain.cell_art = cell_art
-	rain.max_rows = max_rows
-	rain.prewarm_rows = int(max_rows * 0.5)
-	rain.fall_alpha = 1.0
-	rain.pile_alpha = 1.0
-	rain.position = r.position
-	rain.size = r.size
-	_preview.add_child(rain)
-	_rains.append(rain)
-	return rain
+# --- Strips ---------------------------------------------------------------------
 
 # Inside a strip's ring.
 func _inner(s: Rect2) -> Rect2:
 	return s.grow(-float(PixelUI.WELL))
-
-func _draw_wells_bg() -> void:
-	for s in _strips():
-		_preview.draw_rect(_inner(s), WELL_BG, true)
 
 func _draw_wells(on: CanvasItem) -> void:
 	var strips: Array[Rect2] = _strips()
@@ -182,36 +145,6 @@ func _strips() -> Array[Rect2]:
 	for i in range(count):
 		out.append(Rect2(floorf(float(i) * (w + SPLIT)), 0.0, floorf(w), _preview.size.y))
 	return out
-
-func _build_towers() -> void:
-	_preview.draw.connect(_draw_wells_bg)
-	var strips: Array[Rect2] = _strips()
-	var floor_h: float = FLOOR_H if one_at_a_time else 0.0
-	for i in range(strips.size()):
-		var s: Rect2 = _inner(strips[i])
-		# At least three cells across a strip, so most bricks fit it standing
-		# some way up; and no bigger than the main menu's.
-		var cell_art: int = clampi(int(s.size.x / 3.0 / float(PixelUI.PIX)), 4, 10)
-		var cell: float = float(cell_art * PixelUI.PIX)
-		var rows: int = maxi(3, int((s.size.y - floor_h) / cell * 0.4))
-		var rain: Control = _add_rain(Rect2(s.position, Vector2(s.size.x, s.size.y - floor_h)), cell_art, rows)
-		if one_at_a_time:
-			rain.max_falling = 1
-			rain.fall_speed = 2.2
-		if floor_h > 0.0:
-			var fl := ColorRect.new()
-			fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			fl.color = _seat_color(i)
-			fl.position = Vector2(s.position.x, s.end.y - floor_h)
-			fl.size = Vector2(s.size.x, floor_h)
-			_preview.add_child(fl)
-	# The rings go over the bricks, so a brick at a strip's edge tucks under
-	# its ring rather than drawing over it.
-	var rings := Control.new()
-	rings.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rings.size = _preview.size
-	rings.draw.connect(func(): _draw_wells(rings))
-	_preview.add_child(rings)
 
 # Seat i's colour before anyone has picked one: the colour SkinSelect starts
 # them on.

@@ -1,16 +1,11 @@
 extends Control
 
-## Mode picker. GameSettings.mode is set here and then read by PlayerSelect
-## (which hides the race-only single-player option) and by SkinSelect (which
-## decides which scene to hand off to). Nothing downstream re-derives it.
-## Pile Up goes through one more screen first — TowerVariantSelect, which
-## picks the solo or the team cup.
+## Title screen: the name in brick letters and one big card with a live
+## preview of the road (ModeCard RACE, in a CardRow). Enter (or Space) goes
+## on to the player count; the mouse does nothing here.
 ##
-## Two big cards side by side, one per mode, each with a live preview of its
-## mode that runs while it is the selected one (ModeCard, in a CardRow).
-## Driven by the keyboard alone: left/right choose, Enter (or Space) plays;
-## the mouse does nothing here. Coming back from a mode's screens, that mode
-## is the one selected.
+## This used to be a mode picker with a second card for Pile Up, the tower
+## mode; that game now lives in its own repository (docs/PROJECT_STATE.md §0).
 ##
 ## The rest of the look (the pixel font, the brick rain and the brick title)
 ## is shared by every menu screen — see PixelUI.
@@ -22,20 +17,9 @@ const ModeCard := preload("res://scripts/ModeCard.gd")
 
 func _ready() -> void:
 	PixelUI.apply(self)
-	row.add_card(_card(ModeCard.Kind.RACE, "DON'T CRASH"))
-	row.add_card(_card(ModeCard.Kind.TOWER, "PILE UP"))
-	row.chosen.connect(func(i: int): _play(GameSettings.MODE_TOWER if i == 1 else GameSettings.MODE_RACE))
-	row.select(1 if GameSettings.mode == GameSettings.MODE_TOWER else 0)
-
-func _card(kind: int, title: String) -> Control:
 	var c: Control = ModeCard.new()
-	c.kind = kind
-	c.title = title
-	return c
-
-func _play(mode: int) -> void:
-	GameSettings.mode = mode
-	if mode == GameSettings.MODE_TOWER:
-		get_tree().change_scene_to_file("res://scenes/TowerVariantSelect.tscn")
-	else:
-		get_tree().change_scene_to_file("res://scenes/PlayerSelect.tscn")
+	c.kind = ModeCard.Kind.RACE
+	c.title = "PLAY"
+	row.add_card(c)
+	row.chosen.connect(func(_i: int): get_tree().change_scene_to_file("res://scenes/PlayerSelect.tscn"))
+	row.select(0)

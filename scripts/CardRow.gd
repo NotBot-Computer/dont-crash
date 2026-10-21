@@ -3,7 +3,7 @@ extends Control
 ## A row of ModeCards picked with the keyboard alone: left/right move the
 ## selection, Enter (ui_accept — also keypad Enter and Space) chooses, Esc
 ## (ui_cancel) goes back. The mouse does nothing. Used by every menu screen
-## that offers a choice: the main menu, the cup picker and the player count.
+## that offers a choice: the main menu and the player count.
 ##
 ## Cards are laid out centred across the row's width, `card_size` each,
 ## `gap` apart, top-aligned. Build a card with ModeCard.new(), set its
