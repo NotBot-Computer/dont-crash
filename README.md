@@ -2,7 +2,7 @@
 
 A local split-screen party game about not crashing your car. Styled after retro top-down pixel art.
 
-Built in **Godot 4**. It started life as one of the two modes of *Traffic Tower*; the other mode, the tower stacker **Pile Up**, now lives in its own repository (github.com/NotBot-Computer/trafucker).
+Built in **Godot 4**. It started life as one of the two modes of *Traffic Tower*; the other mode, the tower stacker **Pile Up**, now lives in its own repository (github.com/NotBot-Computer/pile-up, formerly `trafucker`).
 
 ## How it plays
 

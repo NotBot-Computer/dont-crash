@@ -1,6 +1,6 @@
 # Don't Crash — CLAUDE.md
 
-Godot 4.7 local-multiplayer dodge-traffic party game. **It was split out of Traffic Tower** (github.com/NotBot-Computer/trafucker), which had two modes; that repository kept the tower mode, Pile Up, and this one is the racing mode alone (docs/PROJECT_STATE.md §0). See [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for the full technical handoff (architecture, decisions, current state, next steps) before making changes — read it first, it's the source of truth for project context.
+Godot 4.7 local-multiplayer dodge-traffic party game. **It was split out of Traffic Tower** (github.com/NotBot-Computer/pile-up, formerly `trafucker`), which had two modes; that repository kept the tower mode, Pile Up, and this one is the racing mode alone (docs/PROJECT_STATE.md §0). See [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) for the full technical handoff (architecture, decisions, current state, next steps) before making changes — read it first, it's the source of truth for project context.
 
 ## Run / validate
 
